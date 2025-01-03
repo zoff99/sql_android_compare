@@ -1,0 +1,153 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.example.sqlcompareexampleapp'
+    compileSdk 33
+
+    def getGitHash = { ->
+        try {
+            def stdout = new ByteArrayOutputStream()
+            exec {
+                commandLine 'git', 'rev-parse', '--verify', '--short=8', 'HEAD'
+                standardOutput = stdout
+            }
+            return "\"" + stdout.toString().trim() + "\""
+        }
+        catch(Exception ignored)
+        {
+            return "\"" + "????????" + "\""
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.example.sqlcompareexampleapp"
+        minSdk 21
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+
+        buildConfigField "String", "GIT_HASH", getGitHash()
+
+        // Enabling multidex support
+        multiDexEnabled true
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments useTestStorageService: 'true'
+        vectorDrawables {
+            useSupportLibrary true
+        }
+    }
+
+    sourceSets {
+        main {
+            jni.srcDirs = []
+            jniLibs.srcDirs = ['nativelibs']
+        }
+        androidTest {
+        }
+    }
+
+    buildTypes {
+        release {
+            crunchPngs false
+            ext.enableCrashlytics = false
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            crunchPngs false
+            ext.enableCrashlytics = false
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+    compileOptions {
+        // Flag to enable support for new language APIs
+        coreLibraryDesugaringEnabled true
+        encoding "UTF-8"
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
+    lintOptions {
+        abortOnError false
+    }
+    buildFeatures {
+        compose true
+        buildConfig = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.3.2'
+    }
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+dependencies {
+
+    // ------- 1 -------
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    // ------- 1 -------
+
+    // ------- 2 -------
+    implementation('net.zetetic:android-database-sqlcipher:4.5.4@aar') {
+        transitive = true
+    }
+    implementation('com.github.zoff99:pkgs_maskaradeOrma-annotations:6.0.2') {
+    }
+    implementation('com.github.zoff99:pkgs_maskaradeOrma-core:6.0.2') {
+        transitive = true
+        exclude group: 'io.reactivex'
+        exclude group: 'com.android.support'
+    }
+    implementation('com.github.zoff99:pkgs_maskaradeOrma-migration:6.0.2') {
+        transitive = true
+        exclude group: 'io.reactivex'
+        exclude group: 'com.android.support'
+    }
+    implementation('com.github.zoff99:pkgs_maskaradeOrma:6.0.2') {
+        transitive = true
+        exclude group: 'io.reactivex'
+        exclude group: 'com.android.support'
+    }
+    implementation('com.github.zoff99:pkgs_maskaradeOrma-encryption:6.0.2') {
+        transitive = true
+        exclude group: 'io.reactivex'
+        exclude group: 'com.android.support'
+    }
+    // ------- 2 -------
+
+    //
+    implementation 'androidx.core:core-ktx:1.8.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.3.1'
+    implementation 'androidx.activity:activity-compose:1.5.1'
+    implementation platform('androidx.compose:compose-bom:2022.10.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation platform('androidx.compose:compose-bom:2022.10.00')
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+}
+
