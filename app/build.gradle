@@ -101,7 +101,7 @@ android {
 dependencies {
 
     // ------- 1 -------
-    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.slf4j:slf4j-api:2.0.16'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
     // ------- 1 -------
 
