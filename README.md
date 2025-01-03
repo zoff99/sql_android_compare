@@ -1,7 +1,7 @@
 compare SQL drivers for Android
 ===============================
 
-[![Android Example App](https://github.com/zoff99/sql_android_compare/actions/workflows/android_app.yml/badge.svg?branch=master)](https://github.com/zoff99/sql_android_compare/actions/workflows/android_app.yml)
+[![Android Example App](https://github.com/zoff99/sql_android_compare/actions/workflows/android_app.yml/badge.svg)](https://github.com/zoff99/sql_android_compare/actions/workflows/android_app.yml)
 
 <img src="https://github.com/zoff99/sqlite-jdbc/releases/download/nightly/android_screen01.png" height="600"></a>
 <br>
