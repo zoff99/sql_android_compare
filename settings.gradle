@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "SQLCompare"
 include ':app'
+include ':orma_processor'

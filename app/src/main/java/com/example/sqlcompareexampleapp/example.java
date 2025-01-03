@@ -2,6 +2,10 @@ package com.example.sqlcompareexampleapp;
 
 import android.content.Context;
 
+import com.github.gfx.android.orma.AccessThreadConstraint;
+import com.github.gfx.android.orma.encryption.EncryptedDatabase;
+
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -19,9 +23,13 @@ public class example
     private static String ret = "";
     private static boolean thread_read_stop = false;
     private static boolean use_wal_mode = true;
-    private static final int num_inserts = 500;
+    private static final int num_inserts = 700;
     private static final int num_threads_write = 3;
     private static final int num_threads_read = 10;
+    private static final boolean ORMA_TRACE = false;
+    private static final int READER_SLEEP_MS = 5;
+    private static final int WRITER_SLEEP_MS = 6;
+    private static OrmaDatabase orma = null;
 
     /*
      * Runs SQL statements that are seperated by ";" character
@@ -69,39 +77,6 @@ public class example
         {
             System.err.println(e.getMessage());
         }
-    }
-
-    long count_gm(boolean log, String tnum_str)
-    {
-        long count = 0L;
-        try
-        {
-            Statement statement = connection.createStatement();
-            ResultSet rs = statement.executeQuery(
-                    "select count(*) as count from GroupMessage");
-            if (rs.next())
-            {
-                count = rs.getLong("count");
-                if (log)
-                {
-                    System.out.println(TAG + tnum_str + ":count: " + count);
-                    ret = ret + "\n" + "count: " + count;
-                }
-            }
-
-            try
-            {
-                statement.close();
-            }
-            catch (Exception ignored)
-            {
-            }
-        }
-        catch (Exception e)
-        {
-        }
-
-        return count;
     }
 
     void sqlcipher_version(String tnum_str)
@@ -182,6 +157,72 @@ public class example
         }
         catch (Exception e)
         {
+        }
+    }
+
+    long count_gm(boolean log, String tnum_str)
+    {
+        long count = 0L;
+        try
+        {
+            Statement statement = connection.createStatement();
+            ResultSet rs = statement.executeQuery(
+                    "select count(*) as count from GroupMessage");
+            if (rs.next())
+            {
+                count = rs.getLong("count");
+                if (log)
+                {
+                    System.out.println(TAG + tnum_str + ":count: " + count);
+                    ret = ret + "\n" + "count: " + count;
+                }
+            }
+
+            try
+            {
+                statement.close();
+            }
+            catch (Exception ignored)
+            {
+            }
+        }
+        catch (Exception e)
+        {
+        }
+
+        return count;
+    }
+
+    long count_gm_2(boolean log, String tnum_str)
+    {
+        long count = 0L;
+        try
+        {
+            count = orma.selectFromGroupMessage().count();
+            if (log)
+            {
+                System.out.println(TAG + tnum_str + ":count: " + count);
+                ret = ret + "\n" + "count: " + count;
+            }
+        }
+        catch (Exception e)
+        {
+        }
+
+        return count;
+    }
+
+    void insert_gm_single_2()
+    {
+        try
+        {
+            GroupMessage gm = new GroupMessage();
+            orma.insertIntoGroupMessage(gm);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -310,7 +351,7 @@ public class example
         }
     }
 
-    Thread read_gm_thread(int tnum)
+    Thread read_gm_thread(int tnum, int type)
     {
         Thread thread = new Thread() {
             public void run() {
@@ -318,9 +359,15 @@ public class example
                 {
                     while (!thread_read_stop)
                     {
-                        count_gm(false, "R_"+tnum);
-                        // Thread.sleep((long)(Math.random() * 20.0f));
-                        Thread.sleep(10);
+                        if (type == 1)
+                        {
+                            count_gm(false, "R_"+tnum);
+                        }
+                        else if (type == 2)
+                        {
+                            count_gm_2(false, "R_"+tnum);
+                        }
+                        Thread.sleep(WRITER_SLEEP_MS);
                     }
                 }
                 catch (Exception e)
@@ -333,7 +380,7 @@ public class example
         return thread;
     }
 
-    Thread insert_gm_thread(int tnum)
+    Thread insert_gm_thread(int tnum, int type)
     {
         Thread thread = new Thread() {
             public void run() {
@@ -341,10 +388,17 @@ public class example
                 {
                     for (int i=0;i<num_inserts;i++)
                     {
-                        insert_gm_single();
-                        count_gm(false, "w_" + tnum);
-                        // Thread.sleep((long)(Math.random() * 20.0f));
-                        Thread.sleep(5);
+                        if (type == 1)
+                        {
+                            insert_gm_single();
+                            count_gm(false, "w_" + tnum);
+                        }
+                        else if (type == 2)
+                        {
+                            insert_gm_single_2();
+                            count_gm_2(false, "w_" + tnum);
+                        }
+                        Thread.sleep(READER_SLEEP_MS);
                     }
                 }
                 catch (Exception e)
@@ -441,6 +495,11 @@ public class example
 
         System.out.println(TAG + "starting ...");
 
+
+        System.out.println(TAG + "=========== jdbc ===========");
+        ret = ret + "\n" + "=========== jdbc ===========";
+
+
         // define the path where the vfs container file will be located
         // path = c.getExternalFilesDir(null).getAbsolutePath() + "/" + "text" + ".db";
         // path = "/data/data/com.example.jdbcexampleapp/files/" + "text.db";
@@ -536,10 +595,6 @@ public class example
             ret = ret + "\n" + "error re-opening DB";
         }
 
-
-
-
-
         // pounding test ----------------
         try
         {
@@ -578,7 +633,7 @@ public class example
         Thread[] t = new Thread[num_threads_write];
         for (int i=0;i<num_threads_write;i++)
         {
-            t[i] = insert_gm_thread(i);
+            t[i] = insert_gm_thread(i, 1);
         }
         count_gm(true, "main");
 
@@ -586,7 +641,7 @@ public class example
         Thread[] tr = new Thread[num_threads_read];
         for (int i=0;i<num_threads_read;i++)
         {
-            tr[i] = read_gm_thread(i);
+            tr[i] = read_gm_thread(i, 1);
         }
 
         for (int i=0;i<num_threads_write;i++)
@@ -625,6 +680,82 @@ public class example
         // all finished
         System.out.println(TAG + "finished (" + (long)((time_end - time_start) / 1000) + " s)");
         ret = ret + "\n" + "finished (" + (long)((time_end - time_start) / 1000) + " s)";
+
+        // +++++++++++++++++++++++++ ORMA +++++++++++++++++++++++++
+        // +++++++++++++++++++++++++ ORMA +++++++++++++++++++++++++
+        // +++++++++++++++++++++++++ ORMA +++++++++++++++++++++++++
+        // +++++++++++++++++++++++++ ORMA +++++++++++++++++++++++++
+
+        time_start = System.currentTimeMillis();
+
+        path = c.getFilesDir().getAbsolutePath() + "/" + "orma" + ".db";
+        System.out.println(TAG + "path: " + path);
+
+        // delete DB
+        java.io.File f1 = new java.io.File(path);
+        f1.delete();
+        System.out.println(TAG + "delete DB.");
+
+
+        OrmaDatabase.Builder builder = OrmaDatabase.builder(c);
+        builder = builder.provider(new EncryptedDatabase.Provider(good_password));
+
+        orma = builder.name(path).readOnMainThread(AccessThreadConstraint.NONE).writeOnMainThread(
+                AccessThreadConstraint.NONE).trace(ORMA_TRACE).build();
+
+
+        // pounding test ----------------
+        System.out.println(TAG + "=========== orma ===========");
+        ret = ret + "\n" + "=========== orma ===========";
+
+        System.out.println(TAG + "number of inserts: " + (num_inserts * num_threads_write));
+
+        t = new Thread[num_threads_write];
+        for (int i=0;i<num_threads_write;i++)
+        {
+            t[i] = insert_gm_thread(i, 2);
+        }
+        count_gm_2(true, "main");
+
+        thread_read_stop = false;
+        tr = new Thread[num_threads_read];
+        for (int i=0;i<num_threads_read;i++)
+        {
+            tr[i] = read_gm_thread(i, 2);
+        }
+
+        for (int i=0;i<num_threads_write;i++)
+        {
+            try
+            {
+                t[i].join();
+            }
+            catch (InterruptedException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+        thread_read_stop = true;
+
+        count_gm_2(true, "main");
+        // pounding test ----------------
+
+
+
+        // close DB
+        System.out.println(TAG + "close again DB.");
+        ret = ret + "\n" + "close again DB";
+
+        time_end = System.currentTimeMillis();
+
+        // all finished
+        System.out.println(TAG + "finished (" + (long)((time_end - time_start) / 1000) + " s)");
+        ret = ret + "\n" + "finished (" + (long)((time_end - time_start) / 1000) + " s)";
+
+
+
+
+
 
         return ret;
     }
